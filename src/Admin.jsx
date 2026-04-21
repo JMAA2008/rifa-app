@@ -2,6 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye, Key } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
+// Formatea un telefono colombiano (573XXXXXXXXX) para mostrarlo bonito
+function formatearTelefono(tel) {
+  if (!tel) return '';
+  const soloDigitos = tel.replace(/\D/g, '');
+  if (soloDigitos.length === 12 && soloDigitos.startsWith('57')) {
+    return '+57 ' + soloDigitos.slice(2, 5) + ' ' + soloDigitos.slice(5, 8) + ' ' + soloDigitos.slice(8);
+  }
+  return tel;
+}
+
 export default function Admin() {
   const [autenticado, setAutenticado] = useState(false);
   const [passwordInput, setPasswordInput] = useState('');
@@ -304,7 +314,7 @@ export default function Admin() {
                         {n.estado !== 'disponible' && (
                           <div className="text-sm text-gray-700">
                             <div>👤 {n.nombre_comprador}</div>
-                            <div>📱 {n.telefono_comprador}</div>
+                            <div>📱 {formatearTelefono(n.telefono_comprador)}</div>
                             {n.clave_verificacion && <div className="flex items-center gap-1 mt-1"><Key className="w-3 h-3 text-purple-600" /> Clave: <span className="font-mono font-bold text-purple-700">{n.clave_verificacion}</span></div>}
                             {n.fecha_apartado && <div className="text-xs text-gray-500">📅 {new Date(n.fecha_apartado).toLocaleString('es-MX')}</div>}
                           </div>
@@ -316,7 +326,7 @@ export default function Admin() {
                             className="bg-green-500 hover:bg-green-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1">
                             <MessageCircle className="w-4 h-4" /> WhatsApp
                           </a>
-                          <a href={`tel:${n.telefono_comprador}`}
+                          <a href={`tel:+${n.telefono_comprador.replace(/\D/g, '')}`}
                             className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-1">
                             <Phone className="w-4 h-4" /> Llamar
                           </a>
@@ -341,7 +351,7 @@ export default function Admin() {
               <input type="text" value={config.premio} onChange={(e) => guardarConfigCampo('premio', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
             <div><label className="text-sm font-medium text-gray-700">Precio por numero ($)</label>
               <input type="number" value={config.precio_numero} onChange={(e) => guardarConfigCampo('precio_numero', Number(e.target.value))} className="w-full border rounded-lg px-3 py-2" /></div>
-            <div><label className="text-sm font-medium text-gray-700">WhatsApp (formato 521 + 10 digitos)</label>
+            <div><label className="text-sm font-medium text-gray-700">WhatsApp (formato internacional completo, ej: 527296464004)</label>
               <input type="text" value={config.whatsapp_destino} onChange={(e) => guardarConfigCampo('whatsapp_destino', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
             <div><label className="text-sm font-medium text-gray-700">Cuenta bancaria</label>
               <input type="text" value={config.cuenta_bancaria} onChange={(e) => guardarConfigCampo('cuenta_bancaria', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
@@ -389,7 +399,7 @@ export default function Admin() {
                   <div>
                     <div className="font-bold text-xl text-yellow-900">#{n.numero.toString().padStart(2, '0')}</div>
                     <div className="text-sm text-gray-700">
-                      <div>{n.nombre_comprador} - {n.telefono_comprador}</div>
+                      <div>{n.nombre_comprador} - {formatearTelefono(n.telefono_comprador)}</div>
                       {n.clave_verificacion && <div className="flex items-center gap-1 text-xs"><Key className="w-3 h-3 text-purple-600" /> <span className="font-mono font-bold text-purple-700">{n.clave_verificacion}</span></div>}
                       {n.fecha_apartado && <div className="text-xs text-gray-500">{new Date(n.fecha_apartado).toLocaleString('es-MX')}</div>}
                     </div>
@@ -419,7 +429,7 @@ export default function Admin() {
                   <div>
                     <div className="font-bold text-xl text-red-900">#{n.numero.toString().padStart(2, '0')}</div>
                     <div className="text-sm text-gray-700">
-                      <div>{n.nombre_comprador} - {n.telefono_comprador}</div>
+                      <div>{n.nombre_comprador} - {formatearTelefono(n.telefono_comprador)}</div>
                       {n.clave_verificacion && <div className="flex items-center gap-1 text-xs"><Key className="w-3 h-3 text-purple-600" /> <span className="font-mono font-bold text-purple-700">{n.clave_verificacion}</span></div>}
                     </div>
                   </div>
@@ -473,7 +483,7 @@ export default function Admin() {
                               {d.estado === 'pagado' ? <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">PAGADO</span>
                                 : <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">APARTADO</span>}
                             </div>
-                            <div className="text-gray-700 text-xs">{d.nombre} - {d.telefono}</div>
+                            <div className="text-gray-700 text-xs">{d.nombre} - {formatearTelefono(d.telefono)}</div>
                           </div>
                           {d.clave && (
                             <div className="text-xs text-purple-700 flex items-center gap-1">
