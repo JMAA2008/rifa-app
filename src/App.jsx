@@ -114,9 +114,8 @@ ${config.cuenta_bancaria}
 A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
 *IMPORTANTE:*
-
-1. Realiza el pago por Nequi, llave o link.
-2. Envia el comprobante por este medio para que quede registrado.
+▸ Realiza el pago por Nequi, llave o link.
+▸ Envia el comprobante por este medio para que quede registrado.
 
 Gracias!`;
   };
