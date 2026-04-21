@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, X, MessageCircle, User, Phone, AlertCircle, Key, Copy, Check } from 'lucide-react';
+import { Ticket, X, MessageCircle, User, Phone, AlertCircle, Key, Copy, Check, Calendar, Sparkles } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 function generarClave() {
@@ -92,10 +92,15 @@ export default function App() {
       ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}\ncolocando el numero: ${numeroNequi || config.cuenta_bancaria}`
       : '';
 
+    // Fecha y loteria (solo si estan definidas)
+    let sorteoTexto = '';
+    if (config.fecha_sorteo) sorteoTexto += `\n📅 *Sorteo:* ${config.fecha_sorteo}`;
+    if (config.loteria) sorteoTexto += `\n🎲 *Se juega con:* ${config.loteria}`;
+
     return `Hola! Quiero apartar numeros de la rifa:
 
 *${config.titulo_rifa}*
-Premio: ${config.premio}
+Premio: ${config.premio}${sorteoTexto}
 
 *Numeros a apartar:* ${numerosTexto}
 *Cantidad:* ${nums.length} numero(s)
@@ -221,12 +226,13 @@ Gracias!`;
     );
   }
 
+  const mostrarSorteoBox = config.fecha_sorteo || config.loteria;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
         {vista === 'rifa' && (
           <>
-            {/* IMAGEN DEL PREMIO (primero, si existe) */}
             {config.imagen_premio_url && (
               <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20 shadow-2xl">
                 <img
@@ -237,7 +243,6 @@ Gracias!`;
               </div>
             )}
 
-            {/* TITULO Y DATOS */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20 shadow-2xl">
               <div className="flex items-center gap-3 mb-4">
                 <Ticket className="w-10 h-10 text-yellow-400" />
@@ -254,7 +259,32 @@ Gracias!`;
               </div>
             </div>
 
-            {/* LEYENDA CON INSTRUCCION */}
+            {/* INFORMACION DEL SORTEO (si existe) */}
+            {mostrarSorteoBox && (
+              <div className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 backdrop-blur-lg rounded-2xl p-5 mb-6 border-2 border-yellow-400/50 shadow-2xl">
+                <div className="space-y-2 text-white">
+                  {config.fecha_sorteo && (
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-6 h-6 text-yellow-300 flex-shrink-0" />
+                      <div>
+                        <div className="text-xs text-yellow-200 uppercase tracking-wider font-bold">Fecha del sorteo</div>
+                        <div className="text-base md:text-lg font-semibold">{config.fecha_sorteo}</div>
+                      </div>
+                    </div>
+                  )}
+                  {config.loteria && (
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="w-6 h-6 text-yellow-300 flex-shrink-0" />
+                      <div>
+                        <div className="text-xs text-yellow-200 uppercase tracking-wider font-bold">Se juega con</div>
+                        <div className="text-base md:text-lg font-semibold">{config.loteria}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mb-4 border border-white/20">
               <div className="text-white text-center font-medium mb-3">
                 👇 Toca los numeros verdes para seleccionarlos
@@ -364,6 +394,23 @@ Gracias!`;
               <div className="text-sm text-purple-900">Numeros:</div>
               <div className="font-bold text-lg text-purple-900">{resultadoExito.numeros.map(n => '#' + n.toString().padStart(2, '0')).join(', ')}</div>
               <div className="text-xl font-bold text-purple-900 mt-1">Total: ${resultadoExito.total}</div>
+
+              {(config.fecha_sorteo || config.loteria) && (
+                <div className="mt-3 pt-3 border-t border-purple-200 space-y-1 text-sm text-purple-900">
+                  {config.fecha_sorteo && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span><strong>Sorteo:</strong> {config.fecha_sorteo}</span>
+                    </div>
+                  )}
+                  {config.loteria && (
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4" />
+                      <span><strong>Loteria:</strong> {config.loteria}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-400 rounded-xl p-5 mb-4">
