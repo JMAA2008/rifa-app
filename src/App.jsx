@@ -12,11 +12,42 @@ function generarClave() {
   return clave;
 }
 
+// Normaliza un telefono colombiano al formato internacional 57XXXXXXXXXX
+function normalizarTelefonoColombia(tel) {
+  if (!tel) return '';
+  let soloDigitos = tel.replace(/\D/g, '');
+  // Si ya tiene 12 digitos y empieza con 57, esta listo
+  if (soloDigitos.length === 12 && soloDigitos.startsWith('57')) return soloDigitos;
+  // Si tiene 10 digitos, asumimos que es colombiano y le agregamos 57
+  if (soloDigitos.length === 10) return '57' + soloDigitos;
+  // Si tiene 11 digitos empezando con 57, puede ser un caso raro, le agregamos el formato
+  if (soloDigitos.length === 11 && soloDigitos.startsWith('57')) return soloDigitos;
+  // Otros casos: lo dejamos como esta (se marcara como invalido al validar)
+  return soloDigitos;
+}
+
+// Valida que sea un telefono colombiano valido
+function esTelefonoColombiaValido(tel) {
+  const normalizado = normalizarTelefonoColombia(tel);
+  // Debe tener 12 digitos, empezar con 57 y el siguiente digito ser 3 (celular colombiano)
+  return /^573\d{9}$/.test(normalizado);
+}
+
+// Formatea para mostrar al usuario de forma legible: +57 300 123 4567
+function formatearTelefonoVisible(tel) {
+  if (!tel) return '';
+  const n = normalizarTelefonoColombia(tel);
+  if (n.length === 12 && n.startsWith('57')) {
+    return '+57 ' + n.slice(2, 5) + ' ' + n.slice(5, 8) + ' ' + n.slice(8);
+  }
+  return tel;
+}
+
 export default function App() {
   const [numeros, setNumeros] = useState([]);
   const [config, setConfig] = useState(null);
   const [seleccionados, setSeleccionados] = useState([]);
-  const [vista, setVista] = useState('rifa'); // 'rifa' | 'formulario' | 'exito'
+  const [vista, setVista] = useState('rifa');
   const [formData, setFormData] = useState({ nombre: '', telefono: '' });
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
@@ -60,8 +91,16 @@ export default function App() {
       alert('Por favor llena tu nombre y telefono');
       return;
     }
+    // Validacion de telefono colombiano
+    if (!esTelefonoColombiaValido(formData.telefono)) {
+      alert('Por favor ingresa un numero de celular colombiano valido (10 digitos empezando por 3, ejemplo: 3001234567).');
+      return;
+    }
     if (seleccionados.length === 0) return;
     setEnviando(true);
+
+    // Guardar telefono normalizado: 573XXXXXXXXX
+    const telefonoNormalizado = normalizarTelefonoColombia(formData.telefono);
 
     const { data: verificacion } = await supabase.from('numeros').select('numero, estado').in('numero', seleccionados);
     const noDisponibles = verificacion?.filter(n => n.estado !== 'disponible') || [];
@@ -74,13 +113,12 @@ export default function App() {
       return;
     }
 
-    // Generar clave unica para este apartado
     const clave = generarClave();
 
     const { error } = await supabase.from('numeros').update({
       estado: 'apartado',
       nombre_comprador: formData.nombre,
-      telefono_comprador: formData.telefono,
+      telefono_comprador: telefonoNormalizado,
       clave_verificacion: clave,
       fecha_apartado: new Date().toISOString()
     }).in('numero', seleccionados).eq('estado', 'disponible');
@@ -110,7 +148,7 @@ Premio: ${config.premio}
 
 *Mis datos:*
 Nombre: ${formData.nombre}
-Telefono: ${formData.telefono}
+Telefono: ${formatearTelefonoVisible(telefonoNormalizado)}
 
 🔑 *MI CLAVE DE VERIFICACION:* ${clave}
 ⚠️ Guardala! La necesitaras si resultas ganador.
@@ -124,11 +162,11 @@ Envio el comprobante de pago por este medio. Gracias!`;
     const url = 'https://wa.me/' + config.whatsapp_destino + '?text=' + encodeURIComponent(mensaje);
     window.open(url, '_blank');
 
-    // Guardar resultado para mostrarlo en pantalla de exito
     setResultadoExito({
       clave,
       numeros: numerosApartados,
       nombre: formData.nombre,
+      telefono: telefonoNormalizado,
       total
     });
 
@@ -251,9 +289,26 @@ Envio el comprobante de pago por este medio. Gracias!`;
                   className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. Juan Perez" />
               </div>
               <div>
-                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2"><Phone className="w-4 h-4" /> Telefono / WhatsApp</label>
-                <input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. 444 123 4567" />
+                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2">
+                  <Phone className="w-4 h-4" /> Celular / WhatsApp 🇨🇴
+                </label>
+                <div className="flex gap-2">
+                  <div className="flex items-center justify-center bg-gray-100 border-2 border-gray-200 rounded-lg px-3 font-bold text-gray-700">
+                    +57
+                  </div>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    value={formData.telefono}
+                    onChange={(e) => {
+                      // Aceptamos que el usuario pegue con o sin 57, lo limpiamos al guardar
+                      setFormData({ ...formData, telefono: e.target.value });
+                    }}
+                    className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none"
+                    placeholder="300 123 4567"
+                  />
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Ingresa tu numero de celular sin el codigo de pais. Ej: 3001234567</p>
               </div>
             </div>
 
@@ -278,6 +333,7 @@ Envio el comprobante de pago por este medio. Gracias!`;
               </div>
               <h2 className="text-2xl font-bold text-gray-800">Numeros apartados!</h2>
               <p className="text-gray-600 mt-1">{resultadoExito.nombre}, tu apartado fue exitoso.</p>
+              <p className="text-xs text-gray-500 mt-1">Registrado con: {formatearTelefonoVisible(resultadoExito.telefono)}</p>
             </div>
 
             <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
