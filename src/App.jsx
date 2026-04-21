@@ -113,7 +113,7 @@ Telefono: ${formatearTelefonoVisible(telefono)}
 🔑 *MI CLAVE DE VERIFICACION:* ${clave}
 ⚠️ Guardala! La necesitaras si resultas ganador.
 
-*Datos para el deposito:*
+*Datos para el PAGO:*
 ${config.cuenta_bancaria}
 A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
