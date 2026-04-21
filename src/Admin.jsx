@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye, Key, Upload, ImageIcon } from 'lucide-react';
+import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye, Key, Upload, ImageIcon, Calendar, Sparkles } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 function formatearTelefono(tel) {
@@ -135,6 +135,8 @@ export default function Admin() {
       titulo_rifa: config.titulo_rifa,
       premio: config.premio,
       precio_numero: config.precio_numero,
+      fecha_sorteo: config.fecha_sorteo || '',
+      loteria: config.loteria || '',
       total_recaudado: pagados.length * config.precio_numero,
       total_participantes: compradoresUnicos.size,
       total_numeros_vendidos: pagados.length,
@@ -155,7 +157,9 @@ export default function Admin() {
       estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null
     }).neq('estado', 'disponible');
 
-    await supabase.from('config').update({ nombre_rifa: 'Rifa actual' }).eq('id', 1);
+    // Limpiar fecha y loteria para la nueva rifa (ya quedaron guardadas en el historial)
+    await supabase.from('config').update({ nombre_rifa: 'Rifa actual', fecha_sorteo: '', loteria: '' }).eq('id', 1);
+    setConfig(prev => ({ ...prev, nombre_rifa: 'Rifa actual', fecha_sorteo: '', loteria: '' }));
 
     setProcesando(false);
     alert('Rifa "' + nombreFinal + '" guardada en historial. Ya puedes empezar una nueva!');
@@ -178,7 +182,9 @@ export default function Admin() {
       cuenta_bancaria: config.cuenta_bancaria,
       titular_cuenta: config.titular_cuenta,
       nombre_rifa: config.nombre_rifa,
-      link_pago_alternativo: config.link_pago_alternativo || ''
+      link_pago_alternativo: config.link_pago_alternativo || '',
+      fecha_sorteo: config.fecha_sorteo || '',
+      loteria: config.loteria || ''
     }).eq('id', 1);
     if (error) setMensajeConfig('Error al guardar');
     else setMensajeConfig('Guardado correctamente');
@@ -460,6 +466,32 @@ export default function Admin() {
               <input type="text" value={config.cuenta_bancaria} onChange={(e) => guardarConfigCampo('cuenta_bancaria', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
             <div><label className="text-sm font-medium text-gray-700">Titular de la cuenta</label>
               <input type="text" value={config.titular_cuenta} onChange={(e) => guardarConfigCampo('titular_cuenta', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
+
+            {/* FECHA Y LOTERIA DEL SORTEO */}
+            <div className="pt-2 mt-2 border-t border-gray-200">
+              <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Informacion del sorteo (opcional)</div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" /> Fecha del sorteo
+                  </label>
+                  <input type="text" value={config.fecha_sorteo || ''} onChange={(e) => guardarConfigCampo('fecha_sorteo', e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Ej: Viernes 15 de diciembre, 2025 - 9 PM" />
+                  <p className="text-xs text-gray-500 mt-1">Texto libre. Si lo dejas vacio, no se muestra en la rifa.</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" /> Se juega con (loteria)
+                  </label>
+                  <input type="text" value={config.loteria || ''} onChange={(e) => guardarConfigCampo('loteria', e.target.value)}
+                    className="w-full border rounded-lg px-3 py-2"
+                    placeholder="Ej: Loteria de Boyaca del sabado" />
+                  <p className="text-xs text-gray-500 mt-1">Nombre de la loteria con la que se juega. Si lo dejas vacio, no se muestra.</p>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="text-sm font-medium text-gray-700">Link de pago alternativo (opcional)</label>
               <input type="text" value={config.link_pago_alternativo || ''} onChange={(e) => guardarConfigCampo('link_pago_alternativo', e.target.value)} className="w-full border rounded-lg px-3 py-2" placeholder="https://clientes.nequi.com.co/recargas" />
@@ -591,6 +623,20 @@ export default function Admin() {
                     <div>
                       <div className="font-bold text-gray-800">{r.nombre_rifa}</div>
                       <div className="text-xs text-gray-500">{new Date(r.fecha_cierre).toLocaleString('es-MX')}</div>
+                      {(r.fecha_sorteo || r.loteria) && (
+                        <div className="mt-1 space-y-0.5">
+                          {r.fecha_sorteo && (
+                            <div className="text-xs text-gray-700 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" /> <span><strong>Sorteo:</strong> {r.fecha_sorteo}</span>
+                            </div>
+                          )}
+                          {r.loteria && (
+                            <div className="text-xs text-gray-700 flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" /> <span><strong>Loteria:</strong> {r.loteria}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => setRifaDetalle(rifaDetalle?.id === r.id ? null : r)}
@@ -608,25 +654,48 @@ export default function Admin() {
                     <div className="bg-white p-2 rounded"><div className="font-bold text-purple-700">{r.total_numeros_vendidos}</div><div className="text-xs text-gray-500">Vendidos</div></div>
                     <div className="bg-white p-2 rounded"><div className="font-bold text-blue-700">{r.total_participantes}</div><div className="text-xs text-gray-500">Personas</div></div>
                   </div>
-                  {rifaDetalle?.id === r.id && r.detalle_completo && (
-                    <div className="mt-3 pt-3 border-t border-gray-200 space-y-1 max-h-64 overflow-y-auto">
-                      {r.detalle_completo.map((d, i) => (
-                        <div key={i} className="text-sm bg-white p-2 rounded">
-                          <div className="flex items-center justify-between flex-wrap gap-1 mb-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold">#{d.numero.toString().padStart(2, '0')}</span>
-                              {d.estado === 'pagado' ? <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">PAGADO</span>
-                                : <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">APARTADO</span>}
+                  {rifaDetalle?.id === r.id && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {/* Recuadro destacado con info del sorteo en el detalle */}
+                      {(r.fecha_sorteo || r.loteria || r.titulo_rifa || r.premio) && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3 text-sm space-y-1">
+                          {r.titulo_rifa && <div><strong className="text-gray-700">Titulo:</strong> <span className="text-gray-900">{r.titulo_rifa}</span></div>}
+                          {r.premio && <div><strong className="text-gray-700">Premio:</strong> <span className="text-gray-900">{r.premio}</span></div>}
+                          {r.fecha_sorteo && (
+                            <div className="flex items-start gap-1">
+                              <Calendar className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+                              <span><strong className="text-gray-700">Fecha sorteo:</strong> <span className="text-gray-900">{r.fecha_sorteo}</span></span>
                             </div>
-                            <div className="text-gray-700 text-xs">{d.nombre} - {formatearTelefono(d.telefono)}</div>
-                          </div>
-                          {d.clave && (
-                            <div className="text-xs text-purple-700 flex items-center gap-1">
-                              <Key className="w-3 h-3" /> <span className="font-mono font-bold">{d.clave}</span>
+                          )}
+                          {r.loteria && (
+                            <div className="flex items-start gap-1">
+                              <Sparkles className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+                              <span><strong className="text-gray-700">Loteria:</strong> <span className="text-gray-900">{r.loteria}</span></span>
                             </div>
                           )}
                         </div>
-                      ))}
+                      )}
+                      {r.detalle_completo && (
+                        <div className="space-y-1 max-h-64 overflow-y-auto">
+                          {r.detalle_completo.map((d, i) => (
+                            <div key={i} className="text-sm bg-white p-2 rounded">
+                              <div className="flex items-center justify-between flex-wrap gap-1 mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold">#{d.numero.toString().padStart(2, '0')}</span>
+                                  {d.estado === 'pagado' ? <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">PAGADO</span>
+                                    : <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">APARTADO</span>}
+                                </div>
+                                <div className="text-gray-700 text-xs">{d.nombre} - {formatearTelefono(d.telefono)}</div>
+                              </div>
+                              {d.clave && (
+                                <div className="text-xs text-purple-700 flex items-center gap-1">
+                                  <Key className="w-3 h-3" /> <span className="font-mono font-bold">{d.clave}</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
