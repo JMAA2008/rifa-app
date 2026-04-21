@@ -12,7 +12,6 @@ function generarClave() {
   return clave;
 }
 
-// Normaliza un telefono colombiano al formato internacional 57XXXXXXXXXX
 function normalizarTelefonoColombia(tel) {
   if (!tel) return '';
   let soloDigitos = tel.replace(/\D/g, '');
@@ -22,13 +21,11 @@ function normalizarTelefonoColombia(tel) {
   return soloDigitos;
 }
 
-// Valida que sea un telefono colombiano valido
 function esTelefonoColombiaValido(tel) {
   const normalizado = normalizarTelefonoColombia(tel);
   return /^573\d{9}$/.test(normalizado);
 }
 
-// Formatea para mostrar al usuario de forma legible: +57 300 123 4567
 function formatearTelefonoVisible(tel) {
   if (!tel) return '';
   const n = normalizarTelefonoColombia(tel);
@@ -38,7 +35,6 @@ function formatearTelefonoVisible(tel) {
   return tel;
 }
 
-// Extrae solo los digitos de una cadena (para el numero de Nequi)
 function extraerDigitos(texto) {
   if (!texto) return '';
   return texto.replace(/\D/g, '');
@@ -54,6 +50,7 @@ export default function App() {
   const [enviando, setEnviando] = useState(false);
   const [resultadoExito, setResultadoExito] = useState(null);
   const [copiado, setCopiado] = useState(false);
+  const [whatsappAbierto, setWhatsappAbierto] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -87,7 +84,40 @@ export default function App() {
     else setSeleccionados([...seleccionados, n].sort((a, b) => a - b));
   };
 
-  const enviarWhatsApp = async () => {
+  // Construye el mensaje de WhatsApp (se usa en apartar y en volver a abrir)
+  const construirMensajeWhatsApp = (datos) => {
+    const { nombre, telefono, numeros: nums, clave, total } = datos;
+    const numerosTexto = nums.map(n => '#' + n.toString().padStart(2, '0')).join(', ');
+    const numeroNequi = extraerDigitos(config.cuenta_bancaria);
+
+    const linkPagoTexto = config.link_pago_alternativo
+      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}\ncolocando el numero: ${numeroNequi || config.cuenta_bancaria}`
+      : '';
+
+    return `Hola! Quiero apartar numeros de la rifa:
+
+*${config.titulo_rifa}*
+Premio: ${config.premio}
+
+*Numeros a apartar:* ${numerosTexto}
+*Cantidad:* ${nums.length} numero(s)
+*Total a pagar:* $${total}
+
+*Mis datos:*
+Nombre: ${nombre}
+Telefono: ${formatearTelefonoVisible(telefono)}
+
+🔑 *MI CLAVE DE VERIFICACION:* ${clave}
+⚠️ Guardala! La necesitaras si resultas ganador.
+
+*Datos para el deposito:*
+${config.cuenta_bancaria}
+A nombre de: ${config.titular_cuenta}${linkPagoTexto}
+
+*IMPORTANTE:* Envia el comprobante de pago por este medio para que quede registrado. Gracias!`;
+  };
+
+  const apartarNumeros = async () => {
     if (!formData.nombre.trim() || !formData.telefono.trim()) {
       alert('Por favor llena tu nombre y telefono');
       return;
@@ -129,41 +159,9 @@ export default function App() {
     }
 
     const total = seleccionados.length * config.precio_numero;
-    const numerosTexto = seleccionados.map(n => '#' + n.toString().padStart(2, '0')).join(', ');
     const numerosApartados = [...seleccionados];
 
-    // Numero de Nequi extraido automaticamente de la cuenta bancaria
-    const numeroNequi = extraerDigitos(config.cuenta_bancaria);
-
-    const linkPagoTexto = config.link_pago_alternativo
-      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}\ncolocando el numero: ${numeroNequi || config.cuenta_bancaria}`
-      : '';
-
-    const mensaje = `Hola! Quiero apartar numeros de la rifa:
-
-*${config.titulo_rifa}*
-Premio: ${config.premio}
-
-*Numeros a apartar:* ${numerosTexto}
-*Cantidad:* ${seleccionados.length} numero(s)
-*Total a pagar:* $${total}
-
-*Mis datos:*
-Nombre: ${formData.nombre}
-Telefono: ${formatearTelefonoVisible(telefonoNormalizado)}
-
-🔑 *MI CLAVE DE VERIFICACION:* ${clave}
-⚠️ Guardala! La necesitaras si resultas ganador.
-
-*Datos para el deposito:*
-${config.cuenta_bancaria}
-A nombre de: ${config.titular_cuenta}${linkPagoTexto}
-
-*IMPORTANTE:* Envia el comprobante de pago por este medio para que quede registrado. Gracias!`;
-
-    const url = 'https://wa.me/' + config.whatsapp_destino + '?text=' + encodeURIComponent(mensaje);
-    window.open(url, '_blank');
-
+    // Ya NO abrimos WhatsApp automaticamente aqui. Solo guardamos los datos.
     setResultadoExito({
       clave,
       numeros: numerosApartados,
@@ -174,8 +172,17 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
     setSeleccionados([]);
     setFormData({ nombre: '', telefono: '' });
+    setWhatsappAbierto(false);
     setVista('exito');
     setEnviando(false);
+  };
+
+  const abrirWhatsApp = () => {
+    if (!resultadoExito) return;
+    const mensaje = construirMensajeWhatsApp(resultadoExito);
+    const url = 'https://wa.me/' + config.whatsapp_destino + '?text=' + encodeURIComponent(mensaje);
+    window.open(url, '_blank');
+    setWhatsappAbierto(true);
   };
 
   const copiarClave = () => {
@@ -189,6 +196,7 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
   const volverARifa = () => {
     setResultadoExito(null);
     setCopiado(false);
+    setWhatsappAbierto(false);
     setVista('rifa');
   };
 
@@ -313,13 +321,13 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
             <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mt-6 text-sm text-yellow-900">
               <AlertCircle className="w-5 h-5 inline mr-1" />
-              <strong>Importante:</strong> Oprime "Apartar" y se abrira WhatsApp con el mensaje de apartado ya listo. Envia ese mensaje primero para que tus numeros queden registrados a tu nombre, y luego realiza el pago con los datos de pago que te llegaran en el chat.
+              <strong>Importante:</strong> Al oprimir "Apartar" tus numeros quedaran registrados a tu nombre. En la siguiente pantalla podras abrir WhatsApp para enviar el mensaje y recibir los datos de pago.
             </div>
 
-            <button onClick={enviarWhatsApp} disabled={enviando}
+            <button onClick={apartarNumeros} disabled={enviando}
               className="w-full mt-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 shadow-lg">
-              <MessageCircle className="w-6 h-6" />
-              {enviando ? 'Apartando...' : 'Apartar por WhatsApp'}
+              <Check className="w-6 h-6" />
+              {enviando ? 'Apartando...' : 'Apartar numeros'}
             </button>
           </div>
         )}
@@ -360,13 +368,55 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
               </p>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm text-blue-900">
-              📩 <strong>Siguiente paso:</strong> ya se abrio WhatsApp con los datos de pago. Envia el mensaje y luego realiza tu deposito. Tus numeros estan apartados.
+            {/* Pasos numerados */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-4">
+              <div className="font-bold text-blue-900 mb-3 flex items-center gap-2">
+                📩 Siguientes pasos:
+              </div>
+              <ol className="space-y-2 text-sm text-blue-900">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">1</span>
+                  <span>Oprime el boton verde para abrir WhatsApp.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">2</span>
+                  <span>Envia el mensaje que aparecera ya redactado.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">3</span>
+                  <span>Realiza el pago con los datos que te llegaran en el chat.</span>
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-xs">4</span>
+                  <span>Envia el comprobante de pago por ese mismo chat.</span>
+                </li>
+              </ol>
             </div>
 
+            {/* Boton principal: Abrir WhatsApp */}
+            {!whatsappAbierto ? (
+              <button onClick={abrirWhatsApp}
+                className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 shadow-lg animate-pulse">
+                <MessageCircle className="w-6 h-6" />
+                Abrir WhatsApp
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <div className="bg-green-50 border-2 border-green-300 rounded-xl p-3 text-center text-sm text-green-800">
+                  ✅ WhatsApp abierto. Si no lo viste, oprime abajo para abrir de nuevo.
+                </div>
+                <button onClick={abrirWhatsApp}
+                  className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2 shadow-lg">
+                  <MessageCircle className="w-5 h-5" />
+                  Abrir WhatsApp de nuevo
+                </button>
+              </div>
+            )}
+
+            {/* Enlace secundario discreto */}
             <button onClick={volverARifa}
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold text-lg transition">
-              Volver a la rifa
+              className="w-full mt-4 text-purple-600 hover:text-purple-800 hover:underline py-2 text-sm font-medium transition">
+              ← Volver a la rifa
             </button>
           </div>
         )}
