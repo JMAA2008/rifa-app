@@ -74,9 +74,9 @@ export default function Admin() {
 
   const liberarNumero = async (n) => {
     if (!confirm('Liberar el numero ' + n.toString().padStart(2, '0') + '?')) return;
-    setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
+    setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
     }).eq('numero', n);
   };
 
@@ -85,9 +85,9 @@ export default function Admin() {
     if (cantidad === 0) { alert('No hay numeros apartados'); return; }
     if (!confirm('Seguro que quieres LIBERAR TODOS los ' + cantidad + ' numeros apartados? Esta accion no se puede deshacer.')) return;
     setProcesando(true);
-    setNumeros(prev => prev.map(x => x.estado === 'apartado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
+    setNumeros(prev => prev.map(x => x.estado === 'apartado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
     }).eq('estado', 'apartado');
     setProcesando(false);
   };
@@ -97,9 +97,9 @@ export default function Admin() {
     if (cantidad === 0) { alert('No hay numeros pagados'); return; }
     if (!confirm('Seguro que quieres LIBERAR TODOS los ' + cantidad + ' numeros pagados? Esta accion no se puede deshacer.')) return;
     setProcesando(true);
-    setNumeros(prev => prev.map(x => x.estado === 'pagado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
+    setNumeros(prev => prev.map(x => x.estado === 'pagado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
     }).eq('estado', 'pagado');
     setProcesando(false);
   };
@@ -129,6 +129,7 @@ export default function Admin() {
       detalle_completo: numeros.filter(n => n.estado !== 'disponible').map(n => ({
         numero: n.numero, estado: n.estado,
         nombre: n.nombre_comprador, telefono: n.telefono_comprador,
+        ciudad: n.ciudad_comprador, cedula3: n.cedula_3_comprador,
         fecha: n.fecha_apartado
       }))
     };
@@ -136,10 +137,10 @@ export default function Admin() {
     const { error: errorInsert } = await supabase.from('rifas_historicas').insert(snapshot);
     if (errorInsert) { alert('Error al guardar historial: ' + errorInsert.message); setProcesando(false); return; }
 
-    setNumeros(prev => prev.map(x => ({ ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null })));
+    setNumeros(prev => prev.map(x => ({ ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null })));
 
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
     }).neq('estado', 'disponible');
 
     await supabase.from('config').update({ nombre_rifa: 'Rifa actual' }).eq('id', 1);
@@ -192,8 +193,9 @@ export default function Admin() {
 
       const nombre = (n.nombre_comprador || '').toLowerCase();
       const tel = (n.telefono_comprador || '').replace(/\D/g, '');
+      const ciudad = (n.ciudad_comprador || '').toLowerCase();
 
-      if (!esBusquedaNumerica && q.length >= 2 && nombre.includes(q)) return true;
+      if (!esBusquedaNumerica && q.length >= 2 && (nombre.includes(q) || ciudad.includes(q))) return true;
       if (qSoloNumeros.length >= 4 && tel.includes(qSoloNumeros)) return true;
 
       return false;
@@ -276,13 +278,13 @@ export default function Admin() {
 
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-            <Search className="w-5 h-5" /> Buscar (numero / nombre / telefono)
+            <Search className="w-5 h-5" /> Buscar (numero / nombre / telefono / ciudad)
           </h3>
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Ej: 03, Juan, 444..."
+            placeholder="Ej: 03, Juan, Ocana, 444..."
             className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none"
           />
           {busqueda.trim() && (
@@ -302,6 +304,8 @@ export default function Admin() {
                           <div className="text-sm text-gray-700">
                             <div>👤 {n.nombre_comprador}</div>
                             <div>📱 {n.telefono_comprador}</div>
+                            {n.ciudad_comprador && <div>📍 {n.ciudad_comprador}</div>}
+                            {n.cedula_3_comprador && <div>🪪 Cedula termina en: <strong>{n.cedula_3_comprador}</strong></div>}
                             {n.fecha_apartado && <div className="text-xs text-gray-500">📅 {new Date(n.fecha_apartado).toLocaleString('es-MX')}</div>}
                           </div>
                         )}
@@ -385,7 +389,8 @@ export default function Admin() {
                   <div>
                     <div className="font-bold text-xl text-yellow-900">#{n.numero.toString().padStart(2, '0')}</div>
                     <div className="text-sm text-gray-700">
-                      {n.nombre_comprador} - {n.telefono_comprador}
+                      <div>{n.nombre_comprador} - {n.telefono_comprador}</div>
+                      {n.ciudad_comprador && <div className="text-xs">📍 {n.ciudad_comprador}{n.cedula_3_comprador ? ' · 🪪 ...' + n.cedula_3_comprador : ''}</div>}
                       {n.fecha_apartado && <div className="text-xs text-gray-500">{new Date(n.fecha_apartado).toLocaleString('es-MX')}</div>}
                     </div>
                   </div>
@@ -413,7 +418,10 @@ export default function Admin() {
                 <div key={n.numero} className="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg p-3 flex-wrap gap-2">
                   <div>
                     <div className="font-bold text-xl text-red-900">#{n.numero.toString().padStart(2, '0')}</div>
-                    <div className="text-sm text-gray-700">{n.nombre_comprador} - {n.telefono_comprador}</div>
+                    <div className="text-sm text-gray-700">
+                      <div>{n.nombre_comprador} - {n.telefono_comprador}</div>
+                      {n.ciudad_comprador && <div className="text-xs">📍 {n.ciudad_comprador}{n.cedula_3_comprador ? ' · 🪪 ...' + n.cedula_3_comprador : ''}</div>}
+                    </div>
                   </div>
                   <button onClick={() => liberarNumero(n.numero)} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium">
                     <RotateCcw className="w-4 h-4 inline" /> Liberar
@@ -458,13 +466,22 @@ export default function Admin() {
                   {rifaDetalle?.id === r.id && r.detalle_completo && (
                     <div className="mt-3 pt-3 border-t border-gray-200 space-y-1 max-h-64 overflow-y-auto">
                       {r.detalle_completo.map((d, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm bg-white p-2 rounded flex-wrap gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold">#{d.numero.toString().padStart(2, '0')}</span>
-                            {d.estado === 'pagado' ? <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">PAGADO</span>
-                              : <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">APARTADO</span>}
+                        <div key={i} className="text-sm bg-white p-2 rounded">
+                          <div className="flex items-center justify-between flex-wrap gap-1 mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold">#{d.numero.toString().padStart(2, '0')}</span>
+                              {d.estado === 'pagado' ? <span className="bg-red-100 text-red-800 text-xs px-2 py-0.5 rounded-full">PAGADO</span>
+                                : <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">APARTADO</span>}
+                            </div>
+                            <div className="text-gray-700 text-xs">{d.nombre} - {d.telefono}</div>
                           </div>
-                          <div className="text-gray-700 text-xs">{d.nombre} - {d.telefono}</div>
+                          {(d.ciudad || d.cedula3) && (
+                            <div className="text-xs text-gray-500">
+                              {d.ciudad && <span>📍 {d.ciudad}</span>}
+                              {d.ciudad && d.cedula3 && ' · '}
+                              {d.cedula3 && <span>🪪 ...{d.cedula3}</span>}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
