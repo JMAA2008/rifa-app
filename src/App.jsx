@@ -226,6 +226,18 @@ Gracias!`;
       <div className="max-w-4xl mx-auto">
         {vista === 'rifa' && (
           <>
+            {/* IMAGEN DEL PREMIO (primero, si existe) */}
+            {config.imagen_premio_url && (
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20 shadow-2xl">
+                <img
+                  src={config.imagen_premio_url}
+                  alt="Imagen del premio"
+                  className="w-full h-auto rounded-xl max-h-96 object-contain mx-auto"
+                />
+              </div>
+            )}
+
+            {/* TITULO Y DATOS */}
             <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-white/20 shadow-2xl">
               <div className="flex items-center gap-3 mb-4">
                 <Ticket className="w-10 h-10 text-yellow-400" />
@@ -241,17 +253,6 @@ Gracias!`;
                 <div className="bg-red-500/30 rounded-lg px-3 py-2 text-white">{pagados} pagados</div>
               </div>
             </div>
-
-            {/* IMAGEN DEL PREMIO (solo si existe) */}
-            {config.imagen_premio_url && (
-              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20 shadow-2xl">
-                <img
-                  src={config.imagen_premio_url}
-                  alt="Imagen del premio"
-                  className="w-full h-auto rounded-xl max-h-96 object-contain mx-auto"
-                />
-              </div>
-            )}
 
             {/* LEYENDA CON INSTRUCCION */}
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mb-4 border border-white/20">
