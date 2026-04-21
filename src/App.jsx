@@ -16,20 +16,15 @@ function generarClave() {
 function normalizarTelefonoColombia(tel) {
   if (!tel) return '';
   let soloDigitos = tel.replace(/\D/g, '');
-  // Si ya tiene 12 digitos y empieza con 57, esta listo
   if (soloDigitos.length === 12 && soloDigitos.startsWith('57')) return soloDigitos;
-  // Si tiene 10 digitos, asumimos que es colombiano y le agregamos 57
   if (soloDigitos.length === 10) return '57' + soloDigitos;
-  // Si tiene 11 digitos empezando con 57, puede ser un caso raro, le agregamos el formato
   if (soloDigitos.length === 11 && soloDigitos.startsWith('57')) return soloDigitos;
-  // Otros casos: lo dejamos como esta (se marcara como invalido al validar)
   return soloDigitos;
 }
 
 // Valida que sea un telefono colombiano valido
 function esTelefonoColombiaValido(tel) {
   const normalizado = normalizarTelefonoColombia(tel);
-  // Debe tener 12 digitos, empezar con 57 y el siguiente digito ser 3 (celular colombiano)
   return /^573\d{9}$/.test(normalizado);
 }
 
@@ -41,6 +36,12 @@ function formatearTelefonoVisible(tel) {
     return '+57 ' + n.slice(2, 5) + ' ' + n.slice(5, 8) + ' ' + n.slice(8);
   }
   return tel;
+}
+
+// Extrae solo los digitos de una cadena (para el numero de Nequi)
+function extraerDigitos(texto) {
+  if (!texto) return '';
+  return texto.replace(/\D/g, '');
 }
 
 export default function App() {
@@ -91,7 +92,6 @@ export default function App() {
       alert('Por favor llena tu nombre y telefono');
       return;
     }
-    // Validacion de telefono colombiano
     if (!esTelefonoColombiaValido(formData.telefono)) {
       alert('Por favor ingresa un numero de celular colombiano valido (10 digitos empezando por 3, ejemplo: 3001234567).');
       return;
@@ -99,7 +99,6 @@ export default function App() {
     if (seleccionados.length === 0) return;
     setEnviando(true);
 
-    // Guardar telefono normalizado: 573XXXXXXXXX
     const telefonoNormalizado = normalizarTelefonoColombia(formData.telefono);
 
     const { data: verificacion } = await supabase.from('numeros').select('numero, estado').in('numero', seleccionados);
@@ -133,8 +132,11 @@ export default function App() {
     const numerosTexto = seleccionados.map(n => '#' + n.toString().padStart(2, '0')).join(', ');
     const numerosApartados = [...seleccionados];
 
+    // Numero de Nequi extraido automaticamente de la cuenta bancaria
+    const numeroNequi = extraerDigitos(config.cuenta_bancaria);
+
     const linkPagoTexto = config.link_pago_alternativo
-      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}\ncolocando el numero: ${config.cuenta_bancaria.replace(/\D/g, '') || config.cuenta_bancaria}`
+      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}\ncolocando el numero: ${numeroNequi || config.cuenta_bancaria}`
       : '';
 
     const mensaje = `Hola! Quiero apartar numeros de la rifa:
@@ -157,7 +159,7 @@ Telefono: ${formatearTelefonoVisible(telefonoNormalizado)}
 ${config.cuenta_bancaria}
 A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
-*IMPORTANTE:* Envia el comprobante de pago por este medio para que quede registrado. Gracias!
+*IMPORTANTE:* Envia el comprobante de pago por este medio para que quede registrado. Gracias!`;
 
     const url = 'https://wa.me/' + config.whatsapp_destino + '?text=' + encodeURIComponent(mensaje);
     window.open(url, '_blank');
@@ -300,10 +302,7 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
                     type="tel"
                     inputMode="numeric"
                     value={formData.telefono}
-                    onChange={(e) => {
-                      // Aceptamos que el usuario pegue con o sin 57, lo limpiamos al guardar
-                      setFormData({ ...formData, telefono: e.target.value });
-                    }}
+                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                     className="flex-1 border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none"
                     placeholder="300 123 4567"
                   />
