@@ -188,4 +188,40 @@ Envio el comprobante de pago por este medio. Gracias!`;
         )}
 
         {vista === 'formulario' && (
-          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl max-w-lg mx-
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl max-w-lg mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Tus datos</h2>
+              <button onClick={() => setVista('rifa')} className="text-gray-500 hover:text-gray-800"><X className="w-6 h-6" /></button>
+            </div>
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-6">
+              <div className="text-sm text-purple-900 mb-1">Numeros a apartar:</div>
+              <div className="font-bold text-lg text-purple-900">{seleccionados.map(n => '#' + n.toString().padStart(2, '0')).join(', ')}</div>
+              <div className="text-2xl font-bold text-purple-900 mt-2">Total: ${seleccionados.length * config.precio_numero}</div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2"><User className="w-4 h-4" /> Nombre completo</label>
+                <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. Juan Perez" />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2"><Phone className="w-4 h-4" /> Telefono / WhatsApp</label>
+                <input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. 444 123 4567" />
+              </div>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mt-6 text-sm text-yellow-900">
+              <AlertCircle className="w-5 h-5 inline mr-1" />
+              Al continuar se abrira WhatsApp con los datos de pago. Tus numeros quedaran <strong>apartados</strong> hasta confirmar el deposito.
+            </div>
+            <button onClick={enviarWhatsApp} disabled={enviando}
+              className="w-full mt-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 shadow-lg">
+              <MessageCircle className="w-6 h-6" />
+              {enviando ? 'Apartando...' : 'Apartar por WhatsApp'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
