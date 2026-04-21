@@ -67,13 +67,11 @@ export default function Admin() {
     if (data) setHistorial(data);
   };
 
-  // Pagado individual (sin confirmacion, actualizacion instantanea)
   const confirmarPago = async (n) => {
     setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'pagado' } : x));
     await supabase.from('numeros').update({ estado: 'pagado' }).eq('numero', n);
   };
 
-  // Liberar individual (con confirmacion, actualizacion instantanea)
   const liberarNumero = async (n) => {
     if (!confirm('Liberar el numero ' + n.toString().padStart(2, '0') + '?')) return;
     setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
@@ -166,7 +164,8 @@ export default function Admin() {
       whatsapp_destino: config.whatsapp_destino,
       cuenta_bancaria: config.cuenta_bancaria,
       titular_cuenta: config.titular_cuenta,
-      nombre_rifa: config.nombre_rifa
+      nombre_rifa: config.nombre_rifa,
+      link_pago_alternativo: config.link_pago_alternativo || ''
     }).eq('id', 1);
     if (error) setMensajeConfig('Error al guardar');
     else setMensajeConfig('Guardado correctamente');
@@ -174,7 +173,6 @@ export default function Admin() {
     setTimeout(() => setMensajeConfig(''), 3000);
   };
 
-  // Resultados de busqueda
   const resultadosBusqueda = useMemo(() => {
     if (!busqueda.trim()) return [];
     const q = busqueda.trim().toLowerCase();
@@ -244,7 +242,6 @@ export default function Admin() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-4">
 
-        {/* HEADER */}
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
             <div>
@@ -277,7 +274,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* BUSCADOR */}
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
             <Search className="w-5 h-5" /> Buscar (numero / nombre / telefono)
@@ -330,7 +326,6 @@ export default function Admin() {
           )}
         </div>
 
-        {/* CONFIGURACION */}
         <details className="bg-white rounded-2xl p-6 shadow-2xl">
           <summary className="cursor-pointer font-bold text-gray-800 text-lg">⚙️ Configuracion de la rifa</summary>
           <div className="mt-4 space-y-3">
@@ -348,6 +343,11 @@ export default function Admin() {
               <input type="text" value={config.cuenta_bancaria} onChange={(e) => guardarConfigCampo('cuenta_bancaria', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
             <div><label className="text-sm font-medium text-gray-700">Titular de la cuenta</label>
               <input type="text" value={config.titular_cuenta} onChange={(e) => guardarConfigCampo('titular_cuenta', e.target.value)} className="w-full border rounded-lg px-3 py-2" /></div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Link de pago alternativo (opcional)</label>
+              <input type="text" value={config.link_pago_alternativo || ''} onChange={(e) => guardarConfigCampo('link_pago_alternativo', e.target.value)} className="w-full border rounded-lg px-3 py-2" placeholder="https://clientes.nequi.com.co/recargas" />
+              <p className="text-xs text-gray-500 mt-1">Para que clientes de otros bancos puedan pagar. Si lo dejas vacio, no se muestra.</p>
+            </div>
             <button onClick={persistirConfig} disabled={guardandoConfig} className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold">
               {guardandoConfig ? 'Guardando...' : 'Guardar cambios'}
             </button>
@@ -355,7 +355,6 @@ export default function Admin() {
           </div>
         </details>
 
-        {/* ACCIONES MASIVAS */}
         <details className="bg-white rounded-2xl p-6 shadow-2xl">
           <summary className="cursor-pointer font-bold text-gray-800 text-lg">🔧 Acciones masivas</summary>
           <div className="mt-4 space-y-3">
@@ -375,7 +374,6 @@ export default function Admin() {
           </div>
         </details>
 
-        {/* APARTADOS */}
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           <h3 className="font-bold text-lg text-gray-800 mb-3">Apartados (pendientes de pago)</h3>
           {apartados === 0 ? (
@@ -405,7 +403,6 @@ export default function Admin() {
           )}
         </div>
 
-        {/* PAGADOS */}
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           <h3 className="font-bold text-lg text-gray-800 mb-3">Pagados</h3>
           {pagados === 0 ? (
@@ -427,7 +424,6 @@ export default function Admin() {
           )}
         </div>
 
-        {/* HISTORIAL */}
         <details className="bg-white rounded-2xl p-6 shadow-2xl">
           <summary className="cursor-pointer font-bold text-gray-800 text-lg flex items-center gap-2">
             <Archive className="w-5 h-5" /> Historial de rifas pasadas ({historial.length})
