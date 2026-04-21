@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Ticket, X, MessageCircle, User, Phone, AlertCircle, Key, Copy, Check } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Genera clave aleatoria de 5 caracteres sin confusos (sin 0, O, 1, I, L)
 function generarClave() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let clave = '';
@@ -109,7 +108,7 @@ Telefono: ${formatearTelefonoVisible(telefono)}
 🔑 *MI CLAVE DE VERIFICACION:* ${clave}
 ⚠️ Guardala! La necesitaras si resultas ganador.
 
-*Datos para el Pago:*
+*Datos para el deposito:*
 ${config.cuenta_bancaria}
 A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
@@ -243,7 +242,22 @@ Gracias!`;
               </div>
             </div>
 
+            {/* IMAGEN DEL PREMIO (solo si existe) */}
+            {config.imagen_premio_url && (
+              <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-4 mb-6 border border-white/20 shadow-2xl">
+                <img
+                  src={config.imagen_premio_url}
+                  alt="Imagen del premio"
+                  className="w-full h-auto rounded-xl max-h-96 object-contain mx-auto"
+                />
+              </div>
+            )}
+
+            {/* LEYENDA CON INSTRUCCION */}
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4 mb-4 border border-white/20">
+              <div className="text-white text-center font-medium mb-3">
+                👇 Toca los numeros verdes para seleccionarlos
+              </div>
               <div className="flex flex-wrap gap-4 text-white text-sm justify-center">
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-green-500"></div> Disponible</div>
                 <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-blue-500"></div> Seleccionado</div>
