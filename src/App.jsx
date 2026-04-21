@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, X, MessageCircle, User, Phone, AlertCircle, MapPin, CreditCard } from 'lucide-react';
+import { Ticket, X, MessageCircle, User, Phone, AlertCircle, Key, Copy, Check } from 'lucide-react';
 import { supabase } from './supabaseClient';
+
+// Genera clave aleatoria de 5 caracteres sin confusos (sin 0, O, 1, I, L)
+function generarClave() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let clave = '';
+  for (let i = 0; i < 5; i++) {
+    clave += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return clave;
+}
 
 export default function App() {
   const [numeros, setNumeros] = useState([]);
   const [config, setConfig] = useState(null);
   const [seleccionados, setSeleccionados] = useState([]);
-  const [vista, setVista] = useState('rifa');
-  const [formData, setFormData] = useState({ nombre: '', telefono: '', ciudad: '', cedula3: '' });
+  const [vista, setVista] = useState('rifa'); // 'rifa' | 'formulario' | 'exito'
+  const [formData, setFormData] = useState({ nombre: '', telefono: '' });
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [resultadoExito, setResultadoExito] = useState(null);
+  const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -44,12 +56,8 @@ export default function App() {
   };
 
   const enviarWhatsApp = async () => {
-    if (!formData.nombre.trim() || !formData.telefono.trim() || !formData.ciudad.trim() || !formData.cedula3.trim()) {
-      alert('Por favor llena todos los campos');
-      return;
-    }
-    if (!/^\d{3}$/.test(formData.cedula3.trim())) {
-      alert('Los ultimos 3 digitos de la cedula deben ser exactamente 3 numeros');
+    if (!formData.nombre.trim() || !formData.telefono.trim()) {
+      alert('Por favor llena tu nombre y telefono');
       return;
     }
     if (seleccionados.length === 0) return;
@@ -66,12 +74,14 @@ export default function App() {
       return;
     }
 
+    // Generar clave unica para este apartado
+    const clave = generarClave();
+
     const { error } = await supabase.from('numeros').update({
       estado: 'apartado',
       nombre_comprador: formData.nombre,
       telefono_comprador: formData.telefono,
-      ciudad_comprador: formData.ciudad,
-      cedula_3_comprador: formData.cedula3,
+      clave_verificacion: clave,
       fecha_apartado: new Date().toISOString()
     }).in('numero', seleccionados).eq('estado', 'disponible');
 
@@ -83,6 +93,7 @@ export default function App() {
 
     const total = seleccionados.length * config.precio_numero;
     const numerosTexto = seleccionados.map(n => '#' + n.toString().padStart(2, '0')).join(', ');
+    const numerosApartados = [...seleccionados];
 
     const linkPagoTexto = config.link_pago_alternativo
       ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}`
@@ -100,8 +111,9 @@ Premio: ${config.premio}
 *Mis datos:*
 Nombre: ${formData.nombre}
 Telefono: ${formData.telefono}
-Ciudad: ${formData.ciudad}
-Ultimos 3 digitos de cedula: ${formData.cedula3}
+
+🔑 *MI CLAVE DE VERIFICACION:* ${clave}
+⚠️ Guardala! La necesitaras si resultas ganador.
 
 *Datos para el deposito:*
 ${config.cuenta_bancaria}
@@ -112,10 +124,32 @@ Envio el comprobante de pago por este medio. Gracias!`;
     const url = 'https://wa.me/' + config.whatsapp_destino + '?text=' + encodeURIComponent(mensaje);
     window.open(url, '_blank');
 
+    // Guardar resultado para mostrarlo en pantalla de exito
+    setResultadoExito({
+      clave,
+      numeros: numerosApartados,
+      nombre: formData.nombre,
+      total
+    });
+
     setSeleccionados([]);
-    setFormData({ nombre: '', telefono: '', ciudad: '', cedula3: '' });
-    setVista('rifa');
+    setFormData({ nombre: '', telefono: '' });
+    setVista('exito');
     setEnviando(false);
+  };
+
+  const copiarClave = () => {
+    if (!resultadoExito) return;
+    navigator.clipboard.writeText(resultadoExito.clave).then(() => {
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    });
+  };
+
+  const volverARifa = () => {
+    setResultadoExito(null);
+    setCopiado(false);
+    setVista('rifa');
   };
 
   const disponibles = numeros.filter(n => n.estado === 'disponible').length;
@@ -221,29 +255,6 @@ Envio el comprobante de pago por este medio. Gracias!`;
                 <input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                   className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. 444 123 4567" />
               </div>
-              <div>
-                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2"><MapPin className="w-4 h-4" /> Ciudad</label>
-                <input type="text" value={formData.ciudad} onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. Ocana" />
-              </div>
-              <div>
-                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2">
-                  <CreditCard className="w-4 h-4" /> Últimos 3 dígitos de tu cédula
-                </label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={3}
-                  value={formData.cedula3}
-                  onChange={(e) => {
-                    const soloDigitos = e.target.value.replace(/\D/g, '').slice(0, 3);
-                    setFormData({ ...formData, cedula3: soloDigitos });
-                  }}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none"
-                  placeholder="Ej. 123"
-                />
-                <p className="text-xs text-gray-500 mt-1">Esto nos sirve para verificar tu identidad si eres el ganador.</p>
-              </div>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mt-6 text-sm text-yellow-900">
@@ -255,6 +266,52 @@ Envio el comprobante de pago por este medio. Gracias!`;
               className="w-full mt-6 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 shadow-lg">
               <MessageCircle className="w-6 h-6" />
               {enviando ? 'Apartando...' : 'Apartar por WhatsApp'}
+            </button>
+          </div>
+        )}
+
+        {vista === 'exito' && resultadoExito && (
+          <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl max-w-lg mx-auto">
+            <div className="text-center mb-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-3">
+                <Check className="w-10 h-10 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-800">Numeros apartados!</h2>
+              <p className="text-gray-600 mt-1">{resultadoExito.nombre}, tu apartado fue exitoso.</p>
+            </div>
+
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 mb-4">
+              <div className="text-sm text-purple-900">Numeros:</div>
+              <div className="font-bold text-lg text-purple-900">{resultadoExito.numeros.map(n => '#' + n.toString().padStart(2, '0')).join(', ')}</div>
+              <div className="text-xl font-bold text-purple-900 mt-1">Total: ${resultadoExito.total}</div>
+            </div>
+
+            <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-400 rounded-xl p-5 mb-4">
+              <div className="flex items-center gap-2 text-yellow-900 font-bold text-lg mb-2">
+                <Key className="w-6 h-6" />
+                Tu clave de verificacion:
+              </div>
+              <div className="bg-white rounded-lg p-4 flex items-center justify-between gap-3">
+                <div className="text-3xl md:text-4xl font-mono font-bold tracking-widest text-purple-700 flex-1 text-center">
+                  {resultadoExito.clave}
+                </div>
+                <button onClick={copiarClave}
+                  className={`px-3 py-2 rounded-lg font-medium text-sm flex items-center gap-1 transition ${copiado ? 'bg-green-500 text-white' : 'bg-purple-600 hover:bg-purple-700 text-white'}`}>
+                  {copiado ? <><Check className="w-4 h-4" /> Copiado</> : <><Copy className="w-4 h-4" /> Copiar</>}
+                </button>
+              </div>
+              <p className="text-sm text-yellow-900 mt-3 font-medium">
+                ⚠️ <strong>Guarda esta clave!</strong> La necesitaras si resultas ganador para reclamar tu premio. Tambien la enviamos en el mensaje de WhatsApp.
+              </p>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm text-blue-900">
+              📩 <strong>Siguiente paso:</strong> ya se abrio WhatsApp con los datos de pago. Envia el mensaje y luego realiza tu deposito. Tus numeros estan apartados.
+            </div>
+
+            <button onClick={volverARifa}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-xl font-bold text-lg transition">
+              Volver a la rifa
             </button>
           </div>
         )}
