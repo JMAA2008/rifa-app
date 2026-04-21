@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, X, MessageCircle, User, Phone, AlertCircle, ExternalLink } from 'lucide-react';
+import { Ticket, X, MessageCircle, User, Phone, AlertCircle } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function App() {
@@ -79,7 +79,7 @@ export default function App() {
     const numerosTexto = seleccionados.map(n => '#' + n.toString().padStart(2, '0')).join(', ');
 
     const linkPagoTexto = config.link_pago_alternativo
-      ? `\n\n*Paga desde cualquier banco:*\n${config.link_pago_alternativo}`
+      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}`
       : '';
 
     const mensaje = `Hola! Quiero apartar numeros de la rifa:
@@ -215,25 +215,9 @@ Envio el comprobante de pago por este medio. Gracias!`;
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mt-6 text-sm">
-              <div className="font-bold text-blue-900 mb-2">💳 Datos de pago</div>
-              <div className="text-blue-900 mb-1">🏦 <strong>{config.cuenta_bancaria}</strong></div>
-              <div className="text-blue-900 mb-2">👤 A nombre de: <strong>{config.titular_cuenta}</strong></div>
-              {config.link_pago_alternativo && (
-                <div className="mt-3 pt-3 border-t border-blue-200">
-                  <div className="text-blue-900 font-medium mb-1">¿Tienes cuenta en otro banco?</div>
-                  <a href={config.link_pago_alternativo} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-blue-700 hover:text-blue-900 underline font-medium break-all">
-                    <ExternalLink className="w-4 h-4 flex-shrink-0" />
-                    Paga desde cualquier banco aqui
-                  </a>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mt-4 text-sm text-yellow-900">
+            <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mt-6 text-sm text-yellow-900">
               <AlertCircle className="w-5 h-5 inline mr-1" />
-              Al continuar se abrira WhatsApp con los datos de pago. Tus numeros quedaran <strong>apartados</strong> hasta confirmar el deposito.
+              <strong>Importante:</strong> Al continuar se abrira WhatsApp con los datos de pago y tus numeros quedaran <strong>apartados</strong>. Envia el mensaje primero antes de realizar el pago.
             </div>
 
             <button onClick={enviarWhatsApp} disabled={enviando}
