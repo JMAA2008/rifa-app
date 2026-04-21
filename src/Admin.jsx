@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye } from 'lucide-react';
+import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye, Key } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function Admin() {
@@ -74,9 +74,9 @@ export default function Admin() {
 
   const liberarNumero = async (n) => {
     if (!confirm('Liberar el numero ' + n.toString().padStart(2, '0') + '?')) return;
-    setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null } : x));
+    setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null
     }).eq('numero', n);
   };
 
@@ -85,9 +85,9 @@ export default function Admin() {
     if (cantidad === 0) { alert('No hay numeros apartados'); return; }
     if (!confirm('Seguro que quieres LIBERAR TODOS los ' + cantidad + ' numeros apartados? Esta accion no se puede deshacer.')) return;
     setProcesando(true);
-    setNumeros(prev => prev.map(x => x.estado === 'apartado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null } : x));
+    setNumeros(prev => prev.map(x => x.estado === 'apartado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null
     }).eq('estado', 'apartado');
     setProcesando(false);
   };
@@ -97,9 +97,9 @@ export default function Admin() {
     if (cantidad === 0) { alert('No hay numeros pagados'); return; }
     if (!confirm('Seguro que quieres LIBERAR TODOS los ' + cantidad + ' numeros pagados? Esta accion no se puede deshacer.')) return;
     setProcesando(true);
-    setNumeros(prev => prev.map(x => x.estado === 'pagado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null } : x));
+    setNumeros(prev => prev.map(x => x.estado === 'pagado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null
     }).eq('estado', 'pagado');
     setProcesando(false);
   };
@@ -129,7 +129,7 @@ export default function Admin() {
       detalle_completo: numeros.filter(n => n.estado !== 'disponible').map(n => ({
         numero: n.numero, estado: n.estado,
         nombre: n.nombre_comprador, telefono: n.telefono_comprador,
-        ciudad: n.ciudad_comprador, cedula3: n.cedula_3_comprador,
+        clave: n.clave_verificacion,
         fecha: n.fecha_apartado
       }))
     };
@@ -137,10 +137,10 @@ export default function Admin() {
     const { error: errorInsert } = await supabase.from('rifas_historicas').insert(snapshot);
     if (errorInsert) { alert('Error al guardar historial: ' + errorInsert.message); setProcesando(false); return; }
 
-    setNumeros(prev => prev.map(x => ({ ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null })));
+    setNumeros(prev => prev.map(x => ({ ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null })));
 
     await supabase.from('numeros').update({
-      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, ciudad_comprador: null, cedula_3_comprador: null, fecha_apartado: null
+      estado: 'disponible', nombre_comprador: null, telefono_comprador: null, clave_verificacion: null, fecha_apartado: null
     }).neq('estado', 'disponible');
 
     await supabase.from('config').update({ nombre_rifa: 'Rifa actual' }).eq('id', 1);
@@ -193,10 +193,11 @@ export default function Admin() {
 
       const nombre = (n.nombre_comprador || '').toLowerCase();
       const tel = (n.telefono_comprador || '').replace(/\D/g, '');
-      const ciudad = (n.ciudad_comprador || '').toLowerCase();
+      const clave = (n.clave_verificacion || '').toLowerCase();
 
-      if (!esBusquedaNumerica && q.length >= 2 && (nombre.includes(q) || ciudad.includes(q))) return true;
+      if (!esBusquedaNumerica && q.length >= 2 && nombre.includes(q)) return true;
       if (qSoloNumeros.length >= 4 && tel.includes(qSoloNumeros)) return true;
+      if (clave && clave === q) return true;
 
       return false;
     });
@@ -278,13 +279,13 @@ export default function Admin() {
 
         <div className="bg-white rounded-2xl p-6 shadow-2xl">
           <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-            <Search className="w-5 h-5" /> Buscar (numero / nombre / telefono / ciudad)
+            <Search className="w-5 h-5" /> Buscar (numero / nombre / telefono / clave)
           </h3>
           <input
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Ej: 03, Juan, Ocana, 444..."
+            placeholder="Ej: 03, Juan, 4441234, X7K9P..."
             className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none"
           />
           {busqueda.trim() && (
@@ -304,8 +305,7 @@ export default function Admin() {
                           <div className="text-sm text-gray-700">
                             <div>👤 {n.nombre_comprador}</div>
                             <div>📱 {n.telefono_comprador}</div>
-                            {n.ciudad_comprador && <div>📍 {n.ciudad_comprador}</div>}
-                            {n.cedula_3_comprador && <div>🪪 Cedula termina en: <strong>{n.cedula_3_comprador}</strong></div>}
+                            {n.clave_verificacion && <div className="flex items-center gap-1 mt-1"><Key className="w-3 h-3 text-purple-600" /> Clave: <span className="font-mono font-bold text-purple-700">{n.clave_verificacion}</span></div>}
                             {n.fecha_apartado && <div className="text-xs text-gray-500">📅 {new Date(n.fecha_apartado).toLocaleString('es-MX')}</div>}
                           </div>
                         )}
@@ -390,7 +390,7 @@ export default function Admin() {
                     <div className="font-bold text-xl text-yellow-900">#{n.numero.toString().padStart(2, '0')}</div>
                     <div className="text-sm text-gray-700">
                       <div>{n.nombre_comprador} - {n.telefono_comprador}</div>
-                      {n.ciudad_comprador && <div className="text-xs">📍 {n.ciudad_comprador}{n.cedula_3_comprador ? ' · 🪪 ...' + n.cedula_3_comprador : ''}</div>}
+                      {n.clave_verificacion && <div className="flex items-center gap-1 text-xs"><Key className="w-3 h-3 text-purple-600" /> <span className="font-mono font-bold text-purple-700">{n.clave_verificacion}</span></div>}
                       {n.fecha_apartado && <div className="text-xs text-gray-500">{new Date(n.fecha_apartado).toLocaleString('es-MX')}</div>}
                     </div>
                   </div>
@@ -420,7 +420,7 @@ export default function Admin() {
                     <div className="font-bold text-xl text-red-900">#{n.numero.toString().padStart(2, '0')}</div>
                     <div className="text-sm text-gray-700">
                       <div>{n.nombre_comprador} - {n.telefono_comprador}</div>
-                      {n.ciudad_comprador && <div className="text-xs">📍 {n.ciudad_comprador}{n.cedula_3_comprador ? ' · 🪪 ...' + n.cedula_3_comprador : ''}</div>}
+                      {n.clave_verificacion && <div className="flex items-center gap-1 text-xs"><Key className="w-3 h-3 text-purple-600" /> <span className="font-mono font-bold text-purple-700">{n.clave_verificacion}</span></div>}
                     </div>
                   </div>
                   <button onClick={() => liberarNumero(n.numero)} className="bg-gray-400 hover:bg-gray-500 text-white px-3 py-2 rounded-lg text-sm font-medium">
@@ -475,11 +475,9 @@ export default function Admin() {
                             </div>
                             <div className="text-gray-700 text-xs">{d.nombre} - {d.telefono}</div>
                           </div>
-                          {(d.ciudad || d.cedula3) && (
-                            <div className="text-xs text-gray-500">
-                              {d.ciudad && <span>📍 {d.ciudad}</span>}
-                              {d.ciudad && d.cedula3 && ' · '}
-                              {d.cedula3 && <span>🪪 ...{d.cedula3}</span>}
+                          {d.clave && (
+                            <div className="text-xs text-purple-700 flex items-center gap-1">
+                              <Key className="w-3 h-3" /> <span className="font-mono font-bold">{d.clave}</span>
                             </div>
                           )}
                         </div>
