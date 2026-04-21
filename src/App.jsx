@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Ticket, X, MessageCircle, User, Phone, AlertCircle } from 'lucide-react';
+import { Ticket, X, MessageCircle, User, Phone, AlertCircle, MapPin, CreditCard } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function App() {
@@ -7,7 +7,7 @@ export default function App() {
   const [config, setConfig] = useState(null);
   const [seleccionados, setSeleccionados] = useState([]);
   const [vista, setVista] = useState('rifa');
-  const [formData, setFormData] = useState({ nombre: '', telefono: '' });
+  const [formData, setFormData] = useState({ nombre: '', telefono: '', ciudad: '', cedula3: '' });
   const [loading, setLoading] = useState(true);
   const [enviando, setEnviando] = useState(false);
 
@@ -44,8 +44,12 @@ export default function App() {
   };
 
   const enviarWhatsApp = async () => {
-    if (!formData.nombre.trim() || !formData.telefono.trim()) {
-      alert('Por favor llena tu nombre y telefono');
+    if (!formData.nombre.trim() || !formData.telefono.trim() || !formData.ciudad.trim() || !formData.cedula3.trim()) {
+      alert('Por favor llena todos los campos');
+      return;
+    }
+    if (!/^\d{3}$/.test(formData.cedula3.trim())) {
+      alert('Los ultimos 3 digitos de la cedula deben ser exactamente 3 numeros');
       return;
     }
     if (seleccionados.length === 0) return;
@@ -66,6 +70,8 @@ export default function App() {
       estado: 'apartado',
       nombre_comprador: formData.nombre,
       telefono_comprador: formData.telefono,
+      ciudad_comprador: formData.ciudad,
+      cedula_3_comprador: formData.cedula3,
       fecha_apartado: new Date().toISOString()
     }).in('numero', seleccionados).eq('estado', 'disponible');
 
@@ -94,6 +100,8 @@ Premio: ${config.premio}
 *Mis datos:*
 Nombre: ${formData.nombre}
 Telefono: ${formData.telefono}
+Ciudad: ${formData.ciudad}
+Ultimos 3 digitos de cedula: ${formData.cedula3}
 
 *Datos para el deposito:*
 ${config.cuenta_bancaria}
@@ -105,7 +113,7 @@ Envio el comprobante de pago por este medio. Gracias!`;
     window.open(url, '_blank');
 
     setSeleccionados([]);
-    setFormData({ nombre: '', telefono: '' });
+    setFormData({ nombre: '', telefono: '', ciudad: '', cedula3: '' });
     setVista('rifa');
     setEnviando(false);
   };
@@ -213,11 +221,34 @@ Envio el comprobante de pago por este medio. Gracias!`;
                 <input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                   className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. 444 123 4567" />
               </div>
+              <div>
+                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2"><MapPin className="w-4 h-4" /> Ciudad</label>
+                <input type="text" value={formData.ciudad} onChange={(e) => setFormData({ ...formData, ciudad: e.target.value })}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none" placeholder="Ej. Ocana" />
+              </div>
+              <div>
+                <label className="flex items-center gap-2 text-gray-700 font-medium mb-2">
+                  <CreditCard className="w-4 h-4" /> Últimos 3 dígitos de tu cédula
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={3}
+                  value={formData.cedula3}
+                  onChange={(e) => {
+                    const soloDigitos = e.target.value.replace(/\D/g, '').slice(0, 3);
+                    setFormData({ ...formData, cedula3: soloDigitos });
+                  }}
+                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:border-purple-500 focus:outline-none"
+                  placeholder="Ej. 123"
+                />
+                <p className="text-xs text-gray-500 mt-1">Esto nos sirve para verificar tu identidad si eres el ganador.</p>
+              </div>
             </div>
 
             <div className="bg-yellow-50 border border-yellow-300 rounded-xl p-4 mt-6 text-sm text-yellow-900">
               <AlertCircle className="w-5 h-5 inline mr-1" />
-              <strong>Importante:</strong> Al continuar se abrira WhatsApp con los datos de pago y tus numeros quedaran <strong>apartados</strong>. Envia el mensaje primero antes de realizar el pago.
+              <strong>Importante:</strong> Oprime "Apartar" y se abrira WhatsApp con el mensaje de apartado ya listo. Envia ese mensaje primero para que tus numeros queden registrados a tu nombre, y luego realiza el pago con los datos de pago que te llegaran en el chat.
             </div>
 
             <button onClick={enviarWhatsApp} disabled={enviando}
