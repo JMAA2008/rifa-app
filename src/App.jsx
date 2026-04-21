@@ -84,7 +84,6 @@ export default function App() {
     else setSeleccionados([...seleccionados, n].sort((a, b) => a - b));
   };
 
-  // Construye el mensaje de WhatsApp (se usa en apartar y en volver a abrir)
   const construirMensajeWhatsApp = (datos) => {
     const { nombre, telefono, numeros: nums, clave, total } = datos;
     const numerosTexto = nums.map(n => '#' + n.toString().padStart(2, '0')).join(', ');
@@ -114,7 +113,12 @@ Telefono: ${formatearTelefonoVisible(telefono)}
 ${config.cuenta_bancaria}
 A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
-*IMPORTANTE:* Envia el comprobante de pago por este medio para que quede registrado. Gracias!`;
+*IMPORTANTE:*
+
+1. Realiza el pago por Nequi, llave o link.
+2. Envia el comprobante por este medio para que quede registrado.
+
+Gracias!`;
   };
 
   const apartarNumeros = async () => {
@@ -161,7 +165,6 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
     const total = seleccionados.length * config.precio_numero;
     const numerosApartados = [...seleccionados];
 
-    // Ya NO abrimos WhatsApp automaticamente aqui. Solo guardamos los datos.
     setResultadoExito({
       clave,
       numeros: numerosApartados,
@@ -368,7 +371,6 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
               </p>
             </div>
 
-            {/* Pasos numerados */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 mb-4">
               <div className="font-bold text-blue-900 mb-3 flex items-center gap-2">
                 📩 Siguientes pasos:
@@ -393,7 +395,6 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
               </ol>
             </div>
 
-            {/* Boton principal: Abrir WhatsApp */}
             {!whatsappAbierto ? (
               <button onClick={abrirWhatsApp}
                 className="w-full bg-green-500 hover:bg-green-600 text-white py-4 rounded-xl font-bold text-lg transition flex items-center justify-center gap-2 shadow-lg animate-pulse">
@@ -413,7 +414,6 @@ A nombre de: ${config.titular_cuenta}${linkPagoTexto}
               </div>
             )}
 
-            {/* Enlace secundario discreto */}
             <button onClick={volverARifa}
               className="w-full mt-4 text-purple-600 hover:text-purple-800 hover:underline py-2 text-sm font-medium transition">
               ← Volver a la rifa
