@@ -166,19 +166,36 @@ export default function Admin() {
     setTimeout(() => setMensajeConfig(''), 3000);
   };
 
-  // Resultados de busqueda
+  // Resultados de busqueda (corregido)
   const resultadosBusqueda = useMemo(() => {
     if (!busqueda.trim()) return [];
     const q = busqueda.trim().toLowerCase();
+    const qSoloNumeros = q.replace(/\D/g, '');
+    const esBusquedaNumerica = /^\d+$/.test(q);
+
     return numeros.filter(n => {
-      if (n.estado === 'disponible') {
-        const numeroStr = n.numero.toString().padStart(2, '0');
-        return numeroStr === q || n.numero.toString() === q;
-      }
       const numeroStr = n.numero.toString().padStart(2, '0');
+      const numeroSimple = n.numero.toString();
+
+      // Si la busqueda es puramente numerica y corta, buscar por numero de rifa EXACTO
+      if (esBusquedaNumerica && q.length <= 3) {
+        const coincideNumero = numeroStr === q.padStart(2, '0') || numeroSimple === q;
+        if (coincideNumero) return true;
+      }
+
+      // Solo numeros ocupados pueden coincidir por nombre o telefono
+      if (n.estado === 'disponible') return false;
+
       const nombre = (n.nombre_comprador || '').toLowerCase();
-      const tel = (n.telefono_comprador || '').toLowerCase();
-      return numeroStr.includes(q) || n.numero.toString() === q || nombre.includes(q) || tel.includes(q);
+      const tel = (n.telefono_comprador || '').replace(/\D/g, '');
+
+      // Coincidencia por nombre (parcial, minimo 2 caracteres)
+      if (!esBusquedaNumerica && q.length >= 2 && nombre.includes(q)) return true;
+
+      // Coincidencia por telefono (parcial, minimo 4 digitos)
+      if (qSoloNumeros.length >= 4 && tel.includes(qSoloNumeros)) return true;
+
+      return false;
     });
   }, [busqueda, numeros]);
 
