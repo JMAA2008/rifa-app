@@ -67,12 +67,16 @@ export default function Admin() {
     if (data) setHistorial(data);
   };
 
+  // Pagado individual (sin confirmacion, actualizacion instantanea)
   const confirmarPago = async (n) => {
+    setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'pagado' } : x));
     await supabase.from('numeros').update({ estado: 'pagado' }).eq('numero', n);
   };
 
+  // Liberar individual (con confirmacion, actualizacion instantanea)
   const liberarNumero = async (n) => {
     if (!confirm('Liberar el numero ' + n.toString().padStart(2, '0') + '?')) return;
+    setNumeros(prev => prev.map(x => x.numero === n ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
       estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
     }).eq('numero', n);
@@ -83,6 +87,7 @@ export default function Admin() {
     if (cantidad === 0) { alert('No hay numeros apartados'); return; }
     if (!confirm('Seguro que quieres LIBERAR TODOS los ' + cantidad + ' numeros apartados? Esta accion no se puede deshacer.')) return;
     setProcesando(true);
+    setNumeros(prev => prev.map(x => x.estado === 'apartado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
       estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
     }).eq('estado', 'apartado');
@@ -94,6 +99,7 @@ export default function Admin() {
     if (cantidad === 0) { alert('No hay numeros pagados'); return; }
     if (!confirm('Seguro que quieres LIBERAR TODOS los ' + cantidad + ' numeros pagados? Esta accion no se puede deshacer.')) return;
     setProcesando(true);
+    setNumeros(prev => prev.map(x => x.estado === 'pagado' ? { ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null } : x));
     await supabase.from('numeros').update({
       estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
     }).eq('estado', 'pagado');
@@ -132,6 +138,8 @@ export default function Admin() {
     const { error: errorInsert } = await supabase.from('rifas_historicas').insert(snapshot);
     if (errorInsert) { alert('Error al guardar historial: ' + errorInsert.message); setProcesando(false); return; }
 
+    setNumeros(prev => prev.map(x => ({ ...x, estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null })));
+
     await supabase.from('numeros').update({
       estado: 'disponible', nombre_comprador: null, telefono_comprador: null, fecha_apartado: null
     }).neq('estado', 'disponible');
@@ -166,7 +174,7 @@ export default function Admin() {
     setTimeout(() => setMensajeConfig(''), 3000);
   };
 
-  // Resultados de busqueda (corregido)
+  // Resultados de busqueda
   const resultadosBusqueda = useMemo(() => {
     if (!busqueda.trim()) return [];
     const q = busqueda.trim().toLowerCase();
@@ -177,22 +185,17 @@ export default function Admin() {
       const numeroStr = n.numero.toString().padStart(2, '0');
       const numeroSimple = n.numero.toString();
 
-      // Si la busqueda es puramente numerica y corta, buscar por numero de rifa EXACTO
       if (esBusquedaNumerica && q.length <= 3) {
         const coincideNumero = numeroStr === q.padStart(2, '0') || numeroSimple === q;
         if (coincideNumero) return true;
       }
 
-      // Solo numeros ocupados pueden coincidir por nombre o telefono
       if (n.estado === 'disponible') return false;
 
       const nombre = (n.nombre_comprador || '').toLowerCase();
       const tel = (n.telefono_comprador || '').replace(/\D/g, '');
 
-      // Coincidencia por nombre (parcial, minimo 2 caracteres)
       if (!esBusquedaNumerica && q.length >= 2 && nombre.includes(q)) return true;
-
-      // Coincidencia por telefono (parcial, minimo 4 digitos)
       if (qSoloNumeros.length >= 4 && tel.includes(qSoloNumeros)) return true;
 
       return false;
