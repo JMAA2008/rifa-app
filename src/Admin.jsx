@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye, Key } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Settings, Check, RotateCcw, Lock, Search, Trash2, RefreshCw, Archive, Phone, MessageCircle, Eye, Key, Upload, ImageIcon } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
-// Formatea un telefono colombiano (573XXXXXXXXX) para mostrarlo bonito
 function formatearTelefono(tel) {
   if (!tel) return '';
   const soloDigitos = tel.replace(/\D/g, '');
@@ -25,6 +24,9 @@ export default function Admin() {
   const [busqueda, setBusqueda] = useState('');
   const [rifaDetalle, setRifaDetalle] = useState(null);
   const [procesando, setProcesando] = useState(false);
+  const [subiendoImagen, setSubiendoImagen] = useState(false);
+  const [mensajeImagen, setMensajeImagen] = useState('');
+  const inputImagenRef = useRef(null);
 
   const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || '';
 
@@ -182,6 +184,107 @@ export default function Admin() {
     else setMensajeConfig('Guardado correctamente');
     setGuardandoConfig(false);
     setTimeout(() => setMensajeConfig(''), 3000);
+  };
+
+  // Subir imagen del premio
+  const subirImagen = async (evento) => {
+    const archivo = evento.target.files?.[0];
+    if (!archivo) return;
+
+    // Validaciones
+    if (!archivo.type.startsWith('image/')) {
+      setMensajeImagen('El archivo debe ser una imagen (JPG, PNG, WebP)');
+      return;
+    }
+    if (archivo.size > 2 * 1024 * 1024) {
+      setMensajeImagen('La imagen no puede pesar mas de 2 MB');
+      return;
+    }
+
+    setSubiendoImagen(true);
+    setMensajeImagen('');
+
+    try {
+      // Nombre unico basado en el tiempo
+      const extension = archivo.name.split('.').pop();
+      const nombreArchivo = `premio-${Date.now()}.${extension}`;
+
+      // Subir a Supabase Storage
+      const { error: errorUpload } = await supabase.storage
+        .from('rifa-imagenes')
+        .upload(nombreArchivo, archivo, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (errorUpload) {
+        setMensajeImagen('Error al subir: ' + errorUpload.message);
+        setSubiendoImagen(false);
+        return;
+      }
+
+      // Obtener la URL publica
+      const { data: urlData } = supabase.storage
+        .from('rifa-imagenes')
+        .getPublicUrl(nombreArchivo);
+
+      const urlPublica = urlData.publicUrl;
+
+      // Borrar la imagen anterior si existe
+      if (config.imagen_premio_url) {
+        try {
+          const urlAnterior = config.imagen_premio_url;
+          const nombreAnterior = urlAnterior.split('/').pop();
+          if (nombreAnterior) {
+            await supabase.storage.from('rifa-imagenes').remove([nombreAnterior]);
+          }
+        } catch (e) { /* ignorar */ }
+      }
+
+      // Guardar la URL en config
+      const { error: errorUpdate } = await supabase.from('config')
+        .update({ imagen_premio_url: urlPublica })
+        .eq('id', 1);
+
+      if (errorUpdate) {
+        setMensajeImagen('Imagen subida pero no se guardo el enlace: ' + errorUpdate.message);
+      } else {
+        setConfig({ ...config, imagen_premio_url: urlPublica });
+        setMensajeImagen('Imagen subida correctamente');
+        setTimeout(() => setMensajeImagen(''), 3000);
+      }
+    } catch (err) {
+      setMensajeImagen('Error inesperado: ' + err.message);
+    }
+
+    setSubiendoImagen(false);
+    if (inputImagenRef.current) inputImagenRef.current.value = '';
+  };
+
+  const quitarImagen = async () => {
+    if (!confirm('Seguro que quieres quitar la imagen del premio?')) return;
+
+    setSubiendoImagen(true);
+
+    try {
+      // Borrar el archivo del storage
+      if (config.imagen_premio_url) {
+        const nombreArchivo = config.imagen_premio_url.split('/').pop();
+        if (nombreArchivo) {
+          await supabase.storage.from('rifa-imagenes').remove([nombreArchivo]);
+        }
+      }
+
+      // Quitar URL de config
+      await supabase.from('config').update({ imagen_premio_url: '' }).eq('id', 1);
+      setConfig({ ...config, imagen_premio_url: '' });
+      setMensajeImagen('Imagen eliminada');
+      setTimeout(() => setMensajeImagen(''), 3000);
+    } catch (err) {
+      setMensajeImagen('Error al quitar: ' + err.message);
+    }
+
+    setSubiendoImagen(false);
   };
 
   const resultadosBusqueda = useMemo(() => {
@@ -366,6 +469,38 @@ export default function Admin() {
               {guardandoConfig ? 'Guardando...' : 'Guardar cambios'}
             </button>
             {mensajeConfig && <span className="ml-3 text-sm text-green-700">{mensajeConfig}</span>}
+
+            {/* SECCION IMAGEN DEL PREMIO */}
+            <div className="pt-4 mt-4 border-t border-gray-200">
+              <label className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-3">
+                <ImageIcon className="w-4 h-4" /> Imagen del premio (opcional)
+              </label>
+              {config.imagen_premio_url ? (
+                <div className="space-y-3">
+                  <img src={config.imagen_premio_url} alt="Premio" className="w-full max-h-64 object-contain rounded-lg border-2 border-gray-200 bg-gray-50" />
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={() => inputImagenRef.current?.click()} disabled={subiendoImagen}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                      <Upload className="w-4 h-4" /> Cambiar imagen
+                    </button>
+                    <button onClick={quitarImagen} disabled={subiendoImagen}
+                      className="bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                      <Trash2 className="w-4 h-4" /> Quitar imagen
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <button onClick={() => inputImagenRef.current?.click()} disabled={subiendoImagen}
+                    className="bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2">
+                    <Upload className="w-4 h-4" /> {subiendoImagen ? 'Subiendo...' : 'Subir imagen del premio'}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-2">JPG, PNG o WebP. Maximo 2 MB. Si no subes, no se muestra imagen.</p>
+                </div>
+              )}
+              <input ref={inputImagenRef} type="file" accept="image/*" onChange={subirImagen} className="hidden" />
+              {mensajeImagen && <div className={`mt-2 text-sm ${mensajeImagen.includes('Error') ? 'text-red-600' : 'text-green-700'}`}>{mensajeImagen}</div>}
+            </div>
           </div>
         </details>
 
