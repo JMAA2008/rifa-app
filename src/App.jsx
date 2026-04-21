@@ -134,7 +134,7 @@ export default function App() {
     const numerosApartados = [...seleccionados];
 
     const linkPagoTexto = config.link_pago_alternativo
-      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}`
+      ? `\n\n*¿No tienes cuenta Nequi?*\nPaga desde cualquier banco aqui:\n${config.link_pago_alternativo}\ncolocando el numero: ${config.cuenta_bancaria.replace(/\D/g, '') || config.cuenta_bancaria}`
       : '';
 
     const mensaje = `Hola! Quiero apartar numeros de la rifa:
@@ -157,7 +157,7 @@ Telefono: ${formatearTelefonoVisible(telefonoNormalizado)}
 ${config.cuenta_bancaria}
 A nombre de: ${config.titular_cuenta}${linkPagoTexto}
 
-Envio el comprobante de pago por este medio. Gracias!`;
+*IMPORTANTE:* Envia el comprobante de pago por este medio para que quede registrado. Gracias!
 
     const url = 'https://wa.me/' + config.whatsapp_destino + '?text=' + encodeURIComponent(mensaje);
     window.open(url, '_blank');
